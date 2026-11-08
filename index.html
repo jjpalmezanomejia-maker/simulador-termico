@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+  <title>GeoCalor — Bomba de calor geotérmica 3D</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://unpkg.com/three@0.170.0/build/three.module.js",
+      "three/addons/": "https://unpkg.com/three@0.170.0/examples/jsm/"
+    }
+  }
+  </script>
+</head>
+<body>
+  <div class="app">
+    <header class="top">
+      <div class="brand">
+        <span class="brand-mark" aria-hidden="true"></span>
+        <div>
+          <p class="brand-name">GeoCalor</p>
+          <p class="brand-sub">Simula intercambio térmico · COP · consumo</p>
+        </div>
+      </div>
+      <p class="formula" id="formulaBox">Función: P<sub>el</sub> = Q ÷ COP</p>
+      <p class="student">J. J. Palmezano Mejía</p>
+    </header>
+
+    <div class="workspace">
+      <aside class="panel controls">
+        <div class="panel-head">
+          <h2>1. Quién simula</h2>
+        </div>
+        <p class="func-note">Obligatorio antes de iniciar. El DOCX llega a tu correo y en copia (CC) a jomisoac@gmail.com.</p>
+        <label class="field text-field">
+          <span>Nombre completo</span>
+          <input type="text" id="nombre" maxlength="80" placeholder="Ej. Ana Pérez" autocomplete="name" required />
+        </label>
+        <label class="field text-field">
+          <span>Correo electrónico</span>
+          <input type="email" id="correo" maxlength="120" placeholder="ejemplo@correo.com" autocomplete="email" required />
+        </label>
+
+        <h3 class="subhead">2. Controles de simulación</h3>
+        <div class="panel-head compact">
+          <select id="escenario" aria-label="Escenario térmico">
+            <option value="calefaccion">Calefacción</option>
+            <option value="refrigeracion">Refrigeración</option>
+          </select>
+        </div>
+        <p class="func-note">Ajusta parámetros y pulsa <strong>Iniciar simulación</strong>. No se calcula solo.</p>
+
+        <label class="field">
+          <span>Demanda térmica Q <output id="demandaOut">8.0 kW</output></span>
+          <input type="range" id="demanda" min="1" max="20" step="0.5" value="8" />
+          <small>Función: calor (o frío) que pide el edificio.</small>
+        </label>
+        <label class="field">
+          <span>COP bomba geotérmica <output id="copGeoOut">4.0</output></span>
+          <input type="range" id="copGeo" min="0" max="6" step="0.1" value="4.0" />
+          <small>Debe ser &gt; 0. P_geo = Q ÷ COP_geo.</small>
+        </label>
+        <label class="field">
+          <span>COP climatización convencional <output id="copConvOut">1.0</output></span>
+          <input type="range" id="copConv" min="0" max="4" step="0.1" value="1.0" />
+          <small>Referencia bajo la misma Q.</small>
+        </label>
+        <label class="field">
+          <span>Horas de operación / día <output id="horasOut">8 h</output></span>
+          <input type="range" id="horas" min="1" max="24" step="1" value="8" />
+          <small>E_día = P_geo × horas.</small>
+        </label>
+        <label class="field">
+          <span>Temperatura del terreno <output id="tempTerrenoOut">18 °C</output></span>
+          <input type="range" id="tempTerreno" min="8" max="28" step="1" value="18" />
+          <small>Didáctico en el 3D (no altera el COP aquí).</small>
+        </label>
+
+        <button type="button" id="btnIniciar" class="btn-primary">Iniciar simulación y enviar informe</button>
+        <p class="hint" id="mensajeValidacion" role="status">Completa nombre y correo, elige parámetros y pulsa Iniciar.</p>
+        <p class="hint" id="mensajeEnvio" role="status"></p>
+
+        <h3 class="subhead">3. Resultados del cálculo</h3>
+        <div class="kpi-grid">
+          <article class="kpi">
+            <span>Consumo geotérmico P_geo</span>
+            <strong id="consumoGeo">—</strong>
+          </article>
+          <article class="kpi">
+            <span>Consumo convencional P_conv</span>
+            <strong id="consumoConv">—</strong>
+          </article>
+          <article class="kpi accent">
+            <span>Ahorro = P_conv − P_geo</span>
+            <strong id="ahorro">—</strong>
+          </article>
+          <article class="kpi">
+            <span>Energía diaria geotérmica</span>
+            <strong id="energiaDia">—</strong>
+          </article>
+        </div>
+        <p class="explica" id="explicacion"></p>
+      </aside>
+
+      <section class="panel schema" aria-label="Escena 3D">
+        <div class="panel-head">
+          <h2>4. Esquema interactivo 3D</h2>
+          <div class="view-tools">
+            <button type="button" id="btnResetCam" title="Resetear cámara">⟲</button>
+            <span class="live-dot" aria-hidden="true"></span>
+          </div>
+        </div>
+        <p class="func-note">Función: muestra intercambio térmico terreno ↔ edificio. Arrastra para orbitar. El flujo se detiene si COP ≤ 0.</p>
+        <div class="schema-wrap" id="viewport3d" role="img" aria-label="Modelo 3D del sistema geotérmico">
+          <div class="schema-overlay">
+            <span id="labelTerreno">Terreno 18 °C</span>
+            <span id="schemaCaption">Arrastra para orbitar</span>
+          </div>
+        </div>
+      </section>
+
+      <section class="side">
+        <article class="panel chart-panel">
+          <div class="panel-head"><h2>5. Comparación convencional</h2></div>
+          <p class="func-note">Misma demanda Q. Solo cambia el COP. Barras = consumo eléctrico.</p>
+          <div class="chart" id="chartBars">
+            <div class="bar-group">
+              <div class="bar geo" id="barGeo"></div>
+              <span>Geo P_geo</span>
+            </div>
+            <div class="bar-group">
+              <div class="bar conv" id="barConv"></div>
+              <span>Conv P_conv</span>
+            </div>
+          </div>
+          <div class="meter"><div class="meter-fill" id="meterFill"></div></div>
+          <p class="meter-caption" id="meterCaption"></p>
+        </article>
+
+        <article class="panel challenge">
+          <div class="panel-head"><h2>6. Reto (comprueba la fórmula)</h2></div>
+          <p class="reto-q">Si Q = 10 kW y COP = 4, ¿cuánto es P<sub>el</sub> = Q ÷ COP?</p>
+          <div class="reto-actions">
+            <button type="button" data-respuesta="2.5">2.5 kW</button>
+            <button type="button" data-respuesta="4">4 kW</button>
+            <button type="button" data-respuesta="40">40 kW</button>
+            <button type="button" data-respuesta="14">14 kW</button>
+          </div>
+          <p class="hint" id="retoFeedback" role="status"></p>
+        </article>
+
+        <article class="panel ayuda" id="conceptosCreditos">
+          <h2>7. Conceptos</h2>
+          <ul>
+            <li><strong>Intercambio térmico con el terreno:</strong> la bomba toma (o entrega) calor del suelo mediante sondeos; el 3D lo anima.</li>
+            <li><strong>Demanda térmica Q:</strong> potencia de calefacción/refrigeración del edificio (kW).</li>
+            <li><strong>COP:</strong> calor útil entregado por cada kW eléctrico. Debe ser &gt; 0.</li>
+            <li><strong>Consumo eléctrico:</strong> P = Q ÷ COP. Mayor COP ⇒ menos electricidad.</li>
+            <li><strong>Comparación justa:</strong> misma Q; se contrastan COP_geo y COP_conv.</li>
+            <li><strong>Informe:</strong> DOCX al correo del participante y en copia (CC) a jomisoac@gmail.com.</li>
+          </ul>
+          <h2>8. Créditos</h2>
+          <p class="credits">
+            <strong>Autor:</strong> Julio Jorge Palmezano Mejía ·
+            <a href="mailto:jjorgepalmezano@uniguajira.edu.co">jjorgepalmezano@uniguajira.edu.co</a><br />
+            <strong>Asignatura:</strong> Algoritmos y Programación | 2026-II · Universidad de la Guajira<br />
+            <strong>Tema:</strong> Energía geotérmica y bombas de calor (N.° 13)<br />
+            <strong>Envío:</strong> To = quien simula · CC = jomisoac@gmail.com<br />
+            <strong>Fuentes:</strong> SGC — Geotermia Colombia; Directiva (UE) 2018/2001 · Three.js
+          </p>
+        </article>
+      </section>
+    </div>
+  </div>
+  <script type="module" src="app.js"></script>
+</body>
+</html>
