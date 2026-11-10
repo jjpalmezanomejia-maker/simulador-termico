@@ -209,6 +209,38 @@ body {
   cursor: wait;
 }
 
+/* Acciones separadas: simular | enviar informe */
+.btn-row {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.3rem;
+  margin-top: 0.35rem;
+}
+
+.btn-secondary {
+  width: 100%;
+  border: 1.5px solid var(--geo);
+  border-radius: 10px;
+  padding: 0.5rem 0.7rem;
+  font: inherit;
+  font-size: 0.76rem;
+  font-weight: 700;
+  color: var(--geo-deep);
+  background: #fff;
+  cursor: pointer;
+}
+
+.btn-secondary:hover:not(:disabled) {
+  background: #eaf6f2;
+}
+
+.btn-secondary:disabled {
+  opacity: 0.45;
+  border-color: var(--line);
+  color: var(--muted);
+  cursor: not-allowed;
+}
+
 .field input[type="range"] {
   width: 100%;
   accent-color: var(--geo);

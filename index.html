@@ -36,7 +36,7 @@
         <div class="panel-head">
           <h2>1. Quién simula</h2>
         </div>
-        <p class="func-note">Obligatorio antes de iniciar. El DOCX llega a tu correo y en copia (CC) a jjorgepalmezano@uniguajira.edu.co.</p>
+        <p class="func-note">Necesario para enviar el informe. El DOCX llega a tu correo y en copia (CC) a jjorgepalmezano@uniguajira.edu.co.</p>
         <label class="field text-field">
           <span>Nombre completo</span>
           <input type="text" id="nombre" maxlength="80" placeholder="Ej. Ana Pérez" autocomplete="name" required />
@@ -81,8 +81,11 @@
           <small>Didáctico en el 3D (no altera el COP aquí).</small>
         </label>
 
-        <button type="button" id="btnIniciar" class="btn-primary">Iniciar simulación y enviar informe</button>
-        <p class="hint" id="mensajeValidacion" role="status">Completa nombre y correo, elige parámetros y pulsa Iniciar.</p>
+        <div class="btn-row">
+          <button type="button" id="btnIniciar" class="btn-primary">1 · Iniciar simulación</button>
+          <button type="button" id="btnEnviarInforme" class="btn-secondary" disabled>2 · Enviar informe DOCX</button>
+        </div>
+        <p class="hint" id="mensajeValidacion" role="status">Ajusta los parámetros y pulsa «Iniciar simulación». No se calcula solo.</p>
         <p class="hint" id="mensajeEnvio" role="status"></p>
 
         <h3 class="subhead">3. Resultados del cálculo</h3>

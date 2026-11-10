@@ -19,9 +19,10 @@ const els = {
   tempTerreno: document.getElementById("tempTerreno"),
   tempTerrenoOut: document.getElementById("tempTerrenoOut"),
   escenario: document.getElementById("escenario"),
-  mensaje: document.getElementById("mensajeValidacion"),
+  mensajeValidacion: document.getElementById("mensajeValidacion"),
   mensajeEnvio: document.getElementById("mensajeEnvio"),
   btnIniciar: document.getElementById("btnIniciar"),
+  btnEnviarInforme: document.getElementById("btnEnviarInforme"),
   consumoGeo: document.getElementById("consumoGeo"),
   consumoConv: document.getElementById("consumoConv"),
   ahorro: document.getElementById("ahorro"),
@@ -110,7 +111,7 @@ function limpiarResultados() {
   els.ahorro.textContent = "—";
   els.energiaDia.textContent = "—";
   els.explicacion.textContent =
-    "Aún no hay simulación. Completa nombre/correo, ajusta parámetros y pulsa Iniciar.";
+    "Aún no hay simulación. Ajusta los parámetros y pulsa Iniciar simulación.";
   actualizarGrafica(0, 0);
   els.schemaCaption.textContent = "En espera de iniciar simulación";
 }
@@ -213,25 +214,50 @@ async function enviarComentario() {
   return json;
 }
 
-async function iniciarSimulacion() {
+/**
+ * Firma de los controles: si cambia, el informe deja de corresponder
+ * a los resultados mostrados y se bloquea el botón de envío.
+ */
+function firmaControles() {
+  return [
+    els.escenario.value,
+    els.demanda.value,
+    els.copGeo.value,
+    els.copConv.value,
+    els.horas.value,
+    els.tempTerreno.value,
+  ].join("|");
+}
+
+/** Resultado de la última simulación válida (null si no hay o quedó obsoleta). */
+let ultimaSimulacion = null;
+let firmaSimulacion = "";
+
+function bloquearEnvio(motivo) {
+  els.btnEnviarInforme.disabled = true;
+  if (motivo) {
+    els.mensajeValidacion.textContent = motivo;
+    els.mensajeValidacion.className = "hint error";
+  }
+}
+
+function sincronizarBotonInforme() {
+  const listo =
+    ultimaSimulacion !== null && firmaSimulacion === firmaControles();
+  els.btnEnviarInforme.disabled = !listo;
+  if (!listo && ultimaSimulacion !== null) {
+    bloquearEnvio("Los parámetros cambiaron: vuelve a pulsar «1 · Iniciar simulación».");
+  }
+}
+
+/**
+ * PASO 1 — calcula y muestra la simulación. No envía nada
+ * ni exige nombre/correo (eso es del paso 2).
+ */
+function iniciarSimulacion() {
   actualizarEtiquetasControles();
   els.mensajeEnvio.textContent = "";
   els.mensajeEnvio.className = "hint";
-
-  const nombre = els.nombre.value.trim();
-  const correo = els.correo.value.trim();
-  if (!nombre) {
-    els.mensaje.textContent = "Debes ingresar el nombre de quien genera la simulación.";
-    els.mensaje.className = "hint error";
-    els.nombre.focus();
-    return;
-  }
-  if (!emailValido(correo)) {
-    els.mensaje.textContent = "Debes ingresar un correo válido.";
-    els.mensaje.className = "hint error";
-    els.correo.focus();
-    return;
-  }
 
   const demanda = Number(els.demanda.value);
   const copGeo = Number(els.copGeo.value);
@@ -241,9 +267,12 @@ async function iniciarSimulacion() {
 
   if (!geo.ok || !conv.ok) {
     const error = (!geo.ok && geo.error) || (!conv.ok && conv.error);
-    els.mensaje.textContent = "Validación: " + error;
-    els.mensaje.className = "hint error";
+    ultimaSimulacion = null;
+    firmaSimulacion = "";
+    els.mensajeValidacion.textContent = "Validación: " + error;
+    els.mensajeValidacion.className = "hint error";
     limpiarResultados();
+    bloquearEnvio(null);
     scene3d.setState({
       geoOk: false,
       heating: els.escenario.value === "calefaccion",
@@ -260,9 +289,16 @@ async function iniciarSimulacion() {
   const ahorroKw = payload.ahorro;
   const ahorroPct = payload.ahorroPct;
 
-  els.mensaje.textContent =
-    "Simulación iniciada · Q = " + demanda.toFixed(1) + " kW · participante: " + nombre;
-  els.mensaje.className = "hint ok";
+  ultimaSimulacion = payload;
+  firmaSimulacion = firmaControles();
+  els.btnEnviarInforme.disabled = false;
+
+  const nombre = els.nombre.value.trim();
+  els.mensajeValidacion.textContent =
+    "Simulación iniciada · Q = " + demanda.toFixed(1) + " kW" +
+    (nombre ? " · participante: " + nombre : "") +
+    " · pulsa «2 · Enviar informe DOCX».";
+  els.mensajeValidacion.className = "hint ok";
   els.consumoGeo.textContent = formatear(geo.valor, "kW");
   els.consumoConv.textContent = formatear(conv.valor, "kW");
   els.ahorro.textContent = formatear(ahorroKw, "kW") + " (" + ahorroPct.toFixed(0) + "%)";
@@ -289,8 +325,45 @@ async function iniciarSimulacion() {
     consumoConv: conv.valor,
     tempTerreno: payload.tempTerreno,
   });
+}
+
+/**
+ * PASO 2 — genera el DOCX y lo envía por correo.
+ * Exige nombre/correo válidos y una simulación vigente.
+ */
+async function enviarInformeDocx() {
+  const nombre = els.nombre.value.trim();
+  const correo = els.correo.value.trim();
+
+  if (!nombre) {
+    els.mensajeEnvio.textContent = "Debes ingresar el nombre de quien genera la simulación.";
+    els.mensajeEnvio.className = "hint error";
+    els.nombre.focus();
+    return;
+  }
+  if (!emailValido(correo)) {
+    els.mensajeEnvio.textContent = "Debes ingresar un correo válido.";
+    els.mensajeEnvio.className = "hint error";
+    els.correo.focus();
+    return;
+  }
+  if (!ultimaSimulacion || firmaSimulacion !== firmaControles()) {
+    bloquearEnvio(null);
+    els.mensajeEnvio.textContent =
+      "No hay simulación vigente: pulsa «1 · Iniciar simulación» antes de enviar.";
+    els.mensajeEnvio.className = "hint error";
+    return;
+  }
+
+  const payload = {
+    ...ultimaSimulacion,
+    nombre,
+    correo,
+    fecha: new Date().toLocaleString("es-CO"),
+  };
 
   els.btnIniciar.disabled = true;
+  els.btnEnviarInforme.disabled = true;
   els.mensajeEnvio.textContent =
     "Generando DOCX y enviando a " + correo + " (copia: " + CONFIG.EMAIL_DESTINO + ")…";
   els.mensajeEnvio.className = "hint";
@@ -305,10 +378,11 @@ async function iniciarSimulacion() {
   } catch (err) {
     console.error(err);
     els.mensajeEnvio.textContent =
-      "Simulación OK, pero el envío falló: " + err.message;
+      "La simulación está OK, pero el envío falló: " + err.message;
     els.mensajeEnvio.className = "hint error";
   } finally {
     els.btnIniciar.disabled = false;
+    sincronizarBotonInforme();
   }
 }
 
@@ -322,10 +396,17 @@ async function iniciarSimulacion() {
 ].forEach((el) => {
   el.addEventListener("input", actualizarEtiquetasControles);
   el.addEventListener("change", actualizarEtiquetasControles);
+  // Si cambian los controles, el informe vigente deja de corresponder
+  el.addEventListener("input", sincronizarBotonInforme);
+  el.addEventListener("change", sincronizarBotonInforme);
 });
 
 els.btnIniciar.addEventListener("click", () => {
   iniciarSimulacion();
+});
+
+els.btnEnviarInforme.addEventListener("click", () => {
+  enviarInformeDocx();
 });
 
 els.btnResetCam.addEventListener("click", () => scene3d.resetCamera());
