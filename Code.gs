@@ -24,6 +24,12 @@ function doPost(e) {
     const raw = e && e.postData && e.postData.contents
       ? JSON.parse(e.postData.contents)
       : {};
+
+    // Caja de comentarios de la plataforma → correo al docente
+    if (raw.tipo === 'comentario') {
+      return enviarComentario_(raw);
+    }
+
     const d = limpiar_(raw);
 
     const adjuntos = [];
@@ -85,6 +91,60 @@ function doPost(e) {
   } catch (err) {
     return respuesta_({ ok: false, error: String(err) });
   }
+}
+
+/** Envía la caja de comentarios de la plataforma al correo del docente. */
+function enviarComentario_(raw) {
+  const CONFIG_COM = {
+    DESTINO: 'jjorgepalmezano@uniguajira.edu.co',
+    ASUNTO: 'GeoCalor — Comentario sobre la plataforma'
+  };
+
+  const esc = function (v, max) {
+    return String(v == null ? '' : v).substring(0, max || 600)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  };
+
+  const comentario = esc(raw.comentario, 600);
+  if (!comentario) {
+    return respuesta_({ ok: false, error: 'El comentario está vacío.' });
+  }
+
+  const nombre = esc(raw.nombre, 80) || 'Sin nombre';
+  const correo = esc(raw.correo, 120) || 'Sin correo';
+  const pagina = esc(raw.pagina, 200);
+  const fecha = esc(raw.fecha, 40) ||
+    Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'dd/MM/yyyy HH:mm:ss');
+
+  // Salto de línea del textarea → <br> en el HTML del correo
+  const comentarioHtml = comentario.replace(/\r?\n/g, '<br>');
+
+  const html =
+    '<div style="font-family:Arial,sans-serif;color:#173028">' +
+    '<h2 style="color:#0f766e;margin:0 0 8px">Comentario sobre la plataforma GeoCalor</h2>' +
+    '<p style="background:#eef7f3;border:1px solid #c9d5cc;border-radius:8px;padding:10px;white-space:normal">' +
+    comentarioHtml + '</p>' +
+    '<table style="border-collapse:collapse;margin-top:12px">' +
+    fila_('Quién comenta', nombre) +
+    fila_('Correo', correo) +
+    fila_('Página', pagina) +
+    fila_('Fecha', fecha) +
+    '</table>' +
+    '<p style="color:#4d6358;font-size:12px">Enviado desde la caja de comentarios de GeoCalor.</p>' +
+    '</div>';
+
+  const mailOpts = {
+    to: CONFIG_COM.DESTINO,
+    subject: CONFIG_COM.ASUNTO + ' — ' + nombre,
+    htmlBody: html,
+    name: 'GeoCalor Comentarios'
+  };
+  if (correo.indexOf('@') > 0) {
+    mailOpts.replyTo = correo;
+  }
+
+  MailApp.sendEmail(mailOpts);
+  return respuesta_({ ok: true, destino: CONFIG_COM.DESTINO });
 }
 
 function limpiar_(d) {

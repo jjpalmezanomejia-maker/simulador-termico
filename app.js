@@ -36,6 +36,9 @@ const els = {
   retoFeedback: document.getElementById("retoFeedback"),
   viewport: document.getElementById("viewport3d"),
   btnResetCam: document.getElementById("btnResetCam"),
+  comentario: document.getElementById("comentario"),
+  btnComentario: document.getElementById("btnComentario"),
+  mensajeComentario: document.getElementById("mensajeComentario"),
 };
 
 let scene3d;
@@ -169,6 +172,47 @@ async function enviarInforme(payload, docx) {
   return json;
 }
 
+/**
+ * Envía el comentario de la plataforma al correo del docente.
+ * Se reutiliza el mismo backend de Apps Script (Code.gs) con tipo "comentario".
+ */
+async function enviarComentario() {
+  const texto = els.comentario.value.trim();
+  const nombre = els.nombre.value.trim();
+  const correo = els.correo.value.trim();
+
+  if (texto.length < 5) {
+    return { ok: false, error: "Escribe un comentario de al menos 5 caracteres." };
+  }
+  if (!CONFIG.APPS_SCRIPT_URL || CONFIG.APPS_SCRIPT_URL.includes("PEGAR_AQUI")) {
+    return { ok: false, error: "Falta configurar APPS_SCRIPT_URL en config.js." };
+  }
+
+  const res = await fetch(CONFIG.APPS_SCRIPT_URL, {
+    method: "POST",
+    // text/plain evita preflight CORS en Apps Script
+    headers: { "Content-Type": "text/plain;charset=utf-8" },
+    body: JSON.stringify({
+      tipo: "comentario",
+      comentario: texto,
+      nombre: nombre || "Sin nombre",
+      correo: correo || "Sin correo",
+      pagina: location.href,
+      fecha: new Date().toLocaleString("es-CO"),
+    }),
+  });
+
+  const text = await res.text();
+  let json;
+  try {
+    json = JSON.parse(text);
+  } catch {
+    return { ok: false, error: "Respuesta inválida del servidor de correo." };
+  }
+  if (!json.ok) return { ok: false, error: json.error || "No se pudo enviar el comentario." };
+  return json;
+}
+
 async function iniciarSimulacion() {
   actualizarEtiquetasControles();
   els.mensajeEnvio.textContent = "";
@@ -285,6 +329,37 @@ els.btnIniciar.addEventListener("click", () => {
 });
 
 els.btnResetCam.addEventListener("click", () => scene3d.resetCamera());
+
+els.btnComentario.addEventListener("click", async () => {
+  const msg = els.mensajeComentario;
+  const texto = els.comentario.value.trim();
+  if (texto.length < 5) {
+    msg.textContent = "Escribe un comentario de al menos 5 caracteres.";
+    msg.className = "hint error";
+    els.comentario.focus();
+    return;
+  }
+  els.btnComentario.disabled = true;
+  msg.textContent = "Enviando comentario…";
+  msg.className = "hint";
+  try {
+    const r = await enviarComentario();
+    if (r.ok) {
+      msg.textContent = "Comentario enviado a " + CONFIG.COMENTARIOS_DESTINO + ". ¡Gracias!";
+      msg.className = "hint ok";
+      els.comentario.value = "";
+    } else {
+      msg.textContent = r.error;
+      msg.className = "hint error";
+    }
+  } catch (err) {
+    console.error(err);
+    msg.textContent = "Error de red al enviar: " + err.message;
+    msg.className = "hint error";
+  } finally {
+    els.btnComentario.disabled = false;
+  }
+});
 
 document.querySelectorAll(".reto-actions button").forEach((btn) => {
   btn.addEventListener("click", () => {

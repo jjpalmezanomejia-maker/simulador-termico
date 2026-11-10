@@ -350,7 +350,7 @@ body {
 .side {
   min-height: 0;
   display: grid;
-  grid-template-rows: minmax(120px, 0.9fr) auto minmax(140px, 1.1fr);
+  grid-template-rows: minmax(120px, 0.9fr) auto minmax(140px, 1.1fr) auto;
   gap: 0.45rem;
   overflow: hidden;
 }
@@ -496,6 +496,52 @@ body {
   color: var(--geo-deep);
 }
 
+/* ——— Caja de comentarios ——— */
+.comentarios {
+  gap: 0.3rem;
+}
+
+.comentarios textarea {
+  width: 100%;
+  min-height: 2.6rem;
+  resize: none;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 0.4rem 0.5rem;
+  font: inherit;
+  font-size: 0.72rem;
+  line-height: 1.35;
+  color: var(--ink);
+  background: #fff;
+}
+
+.comentarios textarea:focus {
+  outline: none;
+  border-color: var(--geo);
+  box-shadow: 0 0 0 2px rgba(15, 118, 110, 0.15);
+}
+
+.btn-send {
+  border: none;
+  border-radius: 8px;
+  padding: 0.4rem 0.6rem;
+  font: inherit;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #fff;
+  background: linear-gradient(160deg, #0f766e, #0b4f49);
+  cursor: pointer;
+}
+
+.btn-send:hover {
+  filter: brightness(1.06);
+}
+
+.btn-send:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
+
 @keyframes pulseMark {
   0%, 100% { transform: scale(1); filter: brightness(1); }
   50% { transform: scale(1.06); filter: brightness(1.08); }
@@ -519,7 +565,7 @@ body {
     grid-template-columns: 1fr;
     grid-template-rows: auto minmax(220px, 36vh) auto;
   }
-  .side { grid-template-rows: 180px auto; }
+  .side { grid-template-rows: 180px auto auto; }
   .top { grid-template-columns: 1fr auto; }
   .student { display: none; }
 }
