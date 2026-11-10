@@ -2,7 +2,7 @@ GeoCalor — envío de informe DOCX por correo
 ==========================================
 
 Destinatario (To): correo digitado por quien simula
-Copia (CC): jomisoac@gmail.com  (configurable en config.js → EMAIL_DESTINO)
+Copia (CC): jjorgepalmezano@uniguajira.edu.co  (configurable en config.js → EMAIL_DESTINO)
 
 IMPORTANTE: si ya desplegaste Code.gs, vuelve a pegar el archivo actualizado
 y crea una NUEVA implementación (o nueva versión) para que el CC quede activo.
@@ -12,4 +12,4 @@ y crea una NUEVA implementación (o nueva versión) para que el CC quede activo.
 3) Acceso: Cualquiera | Ejecutar como: Yo
 4) Si la URL cambia, actualízala en config.js → APPS_SCRIPT_URL
 5) Prueba: nombre + correo + Iniciar simulación
-6) Revisa bandeja del participante y de jomisoac@gmail.com (y spam)
+6) Revisa bandeja del participante y de jjorgepalmezano@uniguajira.edu.co (y spam)
